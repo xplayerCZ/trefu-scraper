@@ -1,12 +1,16 @@
 import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
-import kotlinx.serialization.*
-import kotlinx.serialization.json.Json
 import org.joda.time.LocalDate
+import org.joda.time.LocalTime
+import org.jsoup.Jsoup
+import java.util.concurrent.TimeUnit
 
-data class Packet(val id: Int?, val from: LocalDate,val to: LocalDate, val valid: Boolean)
-data class Line(val id: Int?, val fullCode: String, val shortCode: String)
-data class Stop(val id: Int?, val name: String, val latitude: String, val longitude: String, val code: String)
+
+data class Packet(val id: Int, val from: LocalDate,val to: LocalDate, val valid: Boolean)
+data class Line(val fullCode: String, val shortCode: String)
+data class Stop(val id: Int, val name: String, val latitude: String, val longitude: String, val code: String)
+data class LineStop(val lineId: Int, val stopId: Int)
+data class Connection(val number: Int, val departures: List<LocalTime?>, val notes: String, val weekDays: Boolean)
+data class Timetable(val stopIds: List<Int>, val connections: List<Connection>, val weekDays: Boolean)
 
 class Scraper(private val location: Int = 11) {
     private val okHttpClient = OkHttpClient.Builder()
@@ -46,15 +50,31 @@ class Scraper(private val location: Int = 11) {
 
     fun requestLines(packedId: Int, date: LocalDate, ptl: Int = 1): List<Line> {
 
-        val request = Utility.createLinesRequest(location, packedId, date.dayOfMonth, date.monthOfYear, date.year, ptl)
+        val request = Utility.createLinesRequest(location, packedId, date, ptl)
         val response = okHttpClient.newCall(request).execute()
         val raw = response.body?.string()!!
 
         val dataMatrix = Utility.extractArrayData(raw)
         val lines = dataMatrix.map {
-            Line(null, it[0], it[1].trim())
+            Line(it[0], it[1].trim())
         }
 
         return lines
+    }
+
+    fun requestTimetables(
+        lineFullCode: String,
+        direction: Int,
+        location: Int,
+        packedId: Int,
+        date: LocalDate,
+        daily: Boolean = false
+    ): String {
+
+        val request = Utility.createTimetableRequest(lineFullCode, direction, location, packedId, date, daily)
+        val response = okHttpClient.newCall(request).execute()
+        val html = response.body?.string()!!
+
+        return html
     }
 }
