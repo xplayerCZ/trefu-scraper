@@ -1,3 +1,5 @@
+import Utility.extractTimetableData
+import Utility.fixRouteData
 import okhttp3.OkHttpClient
 import org.joda.time.LocalDate
 import org.joda.time.LocalTime
@@ -10,7 +12,8 @@ data class Line(val fullCode: String, val shortCode: String)
 data class Stop(val id: Int, val name: String, val latitude: String, val longitude: String, val code: String)
 data class LineStop(val lineId: Int, val stopId: Int)
 data class Connection(val number: Int, val departures: List<LocalTime?>, val notes: String, val weekDays: Boolean)
-data class Timetable(val stopIds: List<Int>, val connections: List<Connection>, val weekDays: Boolean)
+data class Timetable(val connections: List<Connection>, val weekDays: Boolean)
+data class Route(val id: Int, val name: String)
 
 class Scraper(private val location: Int = 11) {
     private val okHttpClient = OkHttpClient.Builder()
@@ -62,19 +65,34 @@ class Scraper(private val location: Int = 11) {
         return lines
     }
 
+    fun requestRoute(line: String, direction: Int, location: Int, packetId: Int): List<Route> {
+
+        val request = Utility.createRouteRequest(line, direction, location, packetId)
+        val response = okHttpClient.newCall(request).execute()
+        val raw = response.body?.string()!!
+
+
+        val dataMatrix = Utility.extractArrayData(fixRouteData(raw))
+        val routes = dataMatrix.map {
+            Route(it[0].toInt(), it[1])
+        }
+
+        return routes
+    }
+
     fun requestTimetables(
         lineFullCode: String,
         direction: Int,
         location: Int,
         packedId: Int,
         date: LocalDate,
-        daily: Boolean = false
-    ): String {
+        daily: Boolean = false,
+    ): List<Timetable> {
 
         val request = Utility.createTimetableRequest(lineFullCode, direction, location, packedId, date, daily)
         val response = okHttpClient.newCall(request).execute()
-        val html = response.body?.string()!!
+        val raw = response.body?.string()!!
 
-        return html
+        return extractTimetableData(raw)
     }
 }

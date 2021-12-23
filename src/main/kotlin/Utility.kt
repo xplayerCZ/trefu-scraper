@@ -47,6 +47,21 @@ object Utility {
             .build()
     }
 
+    fun createRouteRequest(line: String, direction: Int, location: Int, packetId: Int): Request  {
+        val host = "https://www.mhdspoje.cz/jrw50/php/ListTrasyJSON.php"
+
+        val url = host.toHttpUrl().newBuilder()
+            .addQueryParameter("linka", line)
+            .addQueryParameter("smer", direction.toString())
+            .addQueryParameter("location", location.toString())
+            .addQueryParameter("packet", packetId.toString())
+            .build()
+
+        return Request.Builder()
+            .url(url)
+            .build()
+    }
+
     fun createTimetableRequest(lineFullCode: String, direction: Int, location: Int, packedId: Int, date: LocalDate, daily: Boolean): Request  {
         val host = "https://www.mhdspoje.cz/jrw50/php/5_1/loadJRJSON.php"
 
@@ -73,6 +88,11 @@ object Utility {
         return Json.decodeFromString(rawJSON)
     }
 
+    //Fix last 0 in received data
+    fun fixRouteData(rawData: String): String {
+        return rawData.replace(",0", ",\"0\"")
+    }
+
     fun extractTimetableData(rawData: String): List<Timetable> {
         val doc = Jsoup.parse(rawData)
 
@@ -83,22 +103,29 @@ object Utility {
             val label = table.select("label[name=\"name_sloupec\"]")
             weekDay = label.text() == "Pracovní dny"
 
-            val clickableImages = table.select(".zastavky img[onclick]").eachAttr("onclick")
-            val stopIds = clickableImages.map { parseCallback(it) }
-
             val numbers = table.select("table.table_time_JR tr.cell_time_jr_zahlavi td[title]").eachText()
             val notes = table.select("table.table_time_JR tr.cell_time_jr_zahlavi td:not([title])").eachText()
 
-            val timeMatrix = mutableListOf<MutableList<String>>()
-
-            val rows = table.select("table.table_time_JR tr[id|=jr]")
+            val rows = table.select("table.table_time_JR tr[id~=jr]")
+            val columns = mutableListOf<List<String>>()
             for(row in rows) {
-                timeMatrix.add(row.select("td").eachText())
+                columns.add(row.select("td").eachText())
+            }
+
+            val connectionsCount = columns[0].size
+            val stopsCount = rows.size
+
+            val timeMatrix = Array(connectionsCount) { Array(stopsCount) { "" } }
+
+            for(i in 0 until stopsCount) {
+                val column = columns[i]
+                for(j in 0 until connectionsCount) {
+                    timeMatrix[j][i] = column[j]
+                }
             }
 
             val connections = mutableListOf<Connection>()
             for (i in 0 until numbers.size) {
-
                 val times = timeMatrix[i].map {
                     if(!it.contains("-")) {
                         val tokens = it.split(':')
@@ -110,14 +137,8 @@ object Utility {
 
                 connections.add(Connection(numbers[i].toInt(), times, notes[i], weekDay))
             }
-            timetables.add(Timetable(stopIds, connections, weekDay))
+            timetables.add(Timetable(connections, weekDay))
         }
         return timetables
-    }
-
-    fun parseCallback(onclick: String): Int {
-        val tokens = onclick.split(",)")
-
-        return tokens[tokens.size - 2].toInt()
     }
 }
