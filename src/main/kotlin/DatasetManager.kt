@@ -22,14 +22,13 @@ class DatasetManager(private val location: Int = 11) {
     private val lineReporter = LineReporter(httpClient, dbUrl)
     private val packetReporter = PacketReporter(httpClient, dbUrl)
     private val stopReporter = StopReporter(httpClient, dbUrl)
-    private val connectionReporter = ConnectionReporter(httpClient, dbUrl)
     private val timetableReporter = TimetableReporter(httpClient, dbUrl)
 
     fun update(from: LocalDate, to: LocalDate): Boolean {
         val packets = collectPackets()
 
         packetReporter.reportAll(packets.map { PacketDTO(it.id, it.from, it.to, it.valid) })
-        val relevantPackets = packets.filter { (it.from <= from && to <= it.to) || (it.from < from && from < it.to) || (it.from < to && to < it.to) }
+        val relevantPackets = packets.filter { it.valid && ((it.from <= from && to <= it.to) || (it.from < from && from < it.to) || (it.from < to && to < it.to)) }
         relevantPackets.forEach {
             updateData(it)
         }
@@ -56,15 +55,6 @@ class DatasetManager(private val location: Int = 11) {
         reportAllTimetables(timetables, packet.id)
     }
 
-    private fun collectAllRoutes(packetId: Int, lines: List<Line>): List<Route> {
-        val routeCollection = mutableListOf<Route>()
-        lines.forEach {
-            routeCollection.addAll(routeCollector.collect(it.fullCode, 0, location, packetId))
-            routeCollection.addAll(routeCollector.collect(it.fullCode, 1, location, packetId))
-        }
-        return routeCollection
-    }
-
     private fun collectAllTimetables(packetId: Int, lines: List<Line>, date: LocalDate, stops: List<Stop> ): List<Timetable> {
         val timetableCollection = mutableListOf<Timetable>()
         lines.forEach {
@@ -74,7 +64,11 @@ class DatasetManager(private val location: Int = 11) {
             timetableCollection.addAll(
                 timetableCollector.collect(it.fullCode, 0, location, packetId, date)
                     .map { timetable ->
-                        timetable.apply { lineFullCode = it.fullCode; stopIds = stopIdsA } })
+                        timetable.apply {
+                            lineFullCode = it.fullCode
+                            stopIds = stopIdsA
+                        }
+                    })
 
             val stopIdsB = routeCollector.collect(it.fullCode, 1, location, packetId)
                 .map { route ->
@@ -82,16 +76,21 @@ class DatasetManager(private val location: Int = 11) {
             timetableCollection.addAll(
                 timetableCollector.collect(it.fullCode, 1, location, packetId, date)
                     .map { timetable ->
-                        timetable.apply { lineFullCode = it.fullCode; stopIds = stopIdsB } })
+                        timetable.apply {
+                            lineFullCode = it.fullCode
+                            stopIds = stopIdsB
+                        }
+                    })
         }
         return timetableCollection
     }
 
     private fun reportAllTimetables(timetables: List<Timetable>, packetId: Int) {
 
-        val timetablesToMap = timetables.map { timetable ->
-            TimetableDTO(packetId, timetable.lineFullCode!!, timetable.weekDays, timetable.stopIds!!)
+        val timetablesToReport = timetables.map { timetable ->
+            val connectionDTOs = timetable.connections.map { ConnectionDTO(it.number, it.notes, it.departures) }
+            TimetableDTO(packetId, timetable.lineFullCode!!, timetable.weekDays, timetable.stopIds!!, connectionDTOs, timetable.valid)
         }
-        timetableReporter.reportAll(timetablesToMap)
+        timetableReporter.reportAll(timetablesToReport)
     }
 }

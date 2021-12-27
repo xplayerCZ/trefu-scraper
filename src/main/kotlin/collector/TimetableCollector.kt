@@ -24,8 +24,6 @@ class TimetableCollector(private val httpClient: OkHttpClient) {
         val response = httpClient.newCall(request).execute()
         val raw = response.body?.string()!!
 
-        println("Collecting table...")
-
         return TimetableScraper.scrape(raw)
     }
 

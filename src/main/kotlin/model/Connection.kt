@@ -1,6 +1,6 @@
 package model
 
-import cz.davidkurzica.util.LocalTimeSerializer
+import util.LocalTimeSerializer
 import kotlinx.serialization.Serializable
 import org.joda.time.LocalTime
 
@@ -14,9 +14,8 @@ data class Connection(
 
 @Serializable
 data class ConnectionDTO(
-    val timetableId: Int,
     val number: Int,
     val notes: String,
-    val times: List<@Serializable(with = LocalTimeSerializer::class) LocalTime>
+    val times: List<@Serializable(with = LocalTimeSerializer::class) LocalTime?>
 )
 
