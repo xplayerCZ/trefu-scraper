@@ -4,8 +4,8 @@ import model.Packet
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.joda.time.LocalDate
 import scraper.CommonScraper
+import java.time.LocalDate
 
 class PacketCollector(private val httpClient: OkHttpClient) {
 
@@ -17,8 +17,8 @@ class PacketCollector(private val httpClient: OkHttpClient) {
 
         val dataMatrix = CommonScraper.scrape(raw)
         val packets = dataMatrix.map {
-            val from = LocalDate(it[3].toInt(), it[2].toInt(), it[1].toInt())
-            val to = LocalDate(it[6].toInt(), it[5].toInt(), it[4].toInt())
+            val from = LocalDate.of(it[3].toInt(), it[2].toInt(), it[1].toInt())
+            val to = LocalDate.of(it[6].toInt(), it[5].toInt(), it[4].toInt())
             Packet(it[0].toInt(), from, to,it[7] == "1")
         }
 

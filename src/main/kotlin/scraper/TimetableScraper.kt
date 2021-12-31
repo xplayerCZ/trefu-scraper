@@ -2,8 +2,8 @@ package scraper
 
 import model.Connection
 import model.Timetable
-import org.joda.time.LocalTime
 import org.jsoup.Jsoup
+import java.time.LocalTime
 
 object TimetableScraper {
     fun scrape(raw: String): List<Timetable> {
@@ -43,7 +43,7 @@ object TimetableScraper {
                 val times = timeMatrix[i].map {
                     if(!it.contains("-")) {
                         val tokens = it.split(':')
-                        LocalTime(tokens[0].toInt(), tokens[1].toInt())
+                        LocalTime.of(tokens[0].toInt(), tokens[1].toInt())
                     } else {
                         null
                     }

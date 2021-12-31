@@ -2,7 +2,7 @@ package model
 
 import cz.davidkurzica.util.LocalDateSerializer
 import kotlinx.serialization.Serializable
-import org.joda.time.LocalDate
+import java.time.LocalDate
 
 data class Packet(
     val id: Int,

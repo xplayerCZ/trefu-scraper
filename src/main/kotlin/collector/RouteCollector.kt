@@ -17,7 +17,7 @@ class RouteCollector(private val httpClient: OkHttpClient) {
 
         val dataMatrix = CommonScraper.scrape(fixRouteData(raw))
         val routes = dataMatrix.map {
-            Route(it[0].toInt(), it[1])
+            Route(it[1])
         }
 
         return routes
