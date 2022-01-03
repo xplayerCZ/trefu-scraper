@@ -4,17 +4,12 @@ import util.LocalTimeSerializer
 import kotlinx.serialization.Serializable
 import java.time.LocalTime
 
-data class Connection(
-    val number: Int,
-    val departures: List<@Serializable(with = LocalTimeSerializer::class) LocalTime?>,
-    val notes: String,
-    val weekDays: Boolean,
-    var lineFullCode: String? = null
-)
-
 @Serializable
-data class ConnectionDTO(
+class NewConnection(
+    val id: Int,
+    val routeId: Int,
     val number: Int,
-    val notes: String,
+    val departureTimes: List<@Serializable(with = LocalTimeSerializer::class) LocalTime>,
+    val ruleIds: List<Int>
 )
 

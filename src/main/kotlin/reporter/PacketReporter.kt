@@ -2,8 +2,7 @@ package reporter
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import model.Packet
-import model.PacketDTO
+import model.NewPacket
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -15,7 +14,7 @@ class PacketReporter(
     private val host: String
 ) {
 
-    fun reportAll(packets: List<PacketDTO>) {
+    fun reportAll(packets: List<NewPacket>) {
 
         packets.forEach {
             val request = createRequest(it)
@@ -26,7 +25,7 @@ class PacketReporter(
         }
     }
 
-    private fun createRequest(packet: PacketDTO): Request {
+    private fun createRequest(packet: NewPacket): Request {
         val url = host.toHttpUrl().newBuilder()
             .addPathSegment("packet")
             .build()

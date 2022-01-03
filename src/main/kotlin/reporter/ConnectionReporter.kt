@@ -2,7 +2,7 @@ package reporter
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import model.ConnectionDTO
+import model.NewConnection
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -14,7 +14,7 @@ class ConnectionReporter(
     private val host: String
 ) {
 
-    fun reportAll(connections: List<ConnectionDTO>) {
+    fun reportAll(connections: List<NewConnection>) {
 
         connections.forEach {
             val request = createRequest(it)
@@ -25,7 +25,7 @@ class ConnectionReporter(
         }
     }
 
-    private fun createRequest(connection: ConnectionDTO): Request {
+    private fun createRequest(connection: NewConnection): Request {
         val url = host.toHttpUrl().newBuilder()
             .addPathSegment("connection")
             .build()

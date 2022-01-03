@@ -1,6 +1,6 @@
 package collector
 
-import model.Packet
+import model.RawPacket
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -9,7 +9,7 @@ import java.time.LocalDate
 
 class PacketCollector(private val httpClient: OkHttpClient) {
 
-    fun collect(location: Int): List<Packet> {
+    fun collect(location: Int): List<RawPacket> {
 
         val request = createRequest(location)
         val response = httpClient.newCall(request).execute()
@@ -19,7 +19,7 @@ class PacketCollector(private val httpClient: OkHttpClient) {
         val packets = dataMatrix.map {
             val from = LocalDate.of(it[3].toInt(), it[2].toInt(), it[1].toInt())
             val to = LocalDate.of(it[6].toInt(), it[5].toInt(), it[4].toInt())
-            Packet(it[0].toInt(), from, to,it[7] == "1")
+            RawPacket(it[0].toInt(), from, to,it[7] == "1")
         }
 
         return packets

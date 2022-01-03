@@ -1,6 +1,6 @@
 package collector
 
-import model.Stop
+import model.RawStop
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -8,7 +8,7 @@ import scraper.CommonScraper
 
 class StopCollector(private val httpClient: OkHttpClient) {
 
-    fun collect(location: Int, packetId: Int): List<Stop>  {
+    fun collect(location: Int, packetId: Int): List<RawStop>  {
 
         val request = createRequest(location, packetId)
         val response = httpClient.newCall(request).execute()
@@ -16,7 +16,7 @@ class StopCollector(private val httpClient: OkHttpClient) {
 
         val dataMatrix = CommonScraper.scrape(raw)
         val stops = dataMatrix.map {
-            Stop(it[3].toInt(), it[0], it[1], it[2], it[4])
+            RawStop(it[3].toInt(), it[0], it[1], it[2], it[4].toInt())
         }
 
         return stops

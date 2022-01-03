@@ -1,21 +1,19 @@
 package scraper
 
-import model.Connection
+import model.NewStop
+import model.RawRouteStop
 import model.Timetable
 import org.jsoup.Jsoup
 import java.time.LocalTime
 
+// TODO: Rework scraper
 object TimetableScraper {
-    fun scrape(raw: String): List<Timetable> {
-        val doc = Jsoup.parse(raw)
+    fun scrape(raw: String, routes: List<RawRouteStop>, stops: List<NewStop>): Timetable {
+        val result = Timetable()
 
-        val timetables = mutableListOf<Timetable>()
+        val doc = Jsoup.parse(raw)
         val tables = doc.select(".table_JR")
         for (table in tables) {
-            val weekDay: Boolean
-            val label = table.select("label[name=\"name_sloupec\"]")
-
-            weekDay = label.text().contains("Pracovn")
 
             val numbers = table.select("table.table_time_JR tr.cell_time_jr_zahlavi td[title]").eachText()
             val notes = table.select("table.table_time_JR tr.cell_time_jr_zahlavi td:not([title])").eachText()
@@ -38,7 +36,6 @@ object TimetableScraper {
                 }
             }
 
-            val connections = mutableListOf<Connection>()
             for (i in 0 until numbers.size) {
                 val times = timeMatrix[i].map {
                     if(!it.contains("-")) {
@@ -48,11 +45,8 @@ object TimetableScraper {
                         null
                     }
                 }
-
-                connections.add(Connection(numbers[i].toInt(), times, notes[i], weekDay))
             }
-            timetables.add(Timetable(connections, weekDay))
         }
-        return timetables
+        return result
     }
 }

@@ -2,6 +2,7 @@ import collector.*
 import model.*
 import okhttp3.OkHttpClient
 import reporter.*
+import scraper.TimetableScraper
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
@@ -19,18 +20,17 @@ class DatasetManager(private val location: Int = 11) {
     private val stopCollector = StopCollector(httpClient)
     private val timetableCollector = TimetableCollector(httpClient)
 
+    private val connectionReporter = ConnectionReporter(httpClient, dbUrl)
     private val lineReporter = LineReporter(httpClient, dbUrl)
     private val packetReporter = PacketReporter(httpClient, dbUrl)
     private val stopReporter = StopReporter(httpClient, dbUrl)
-    private val timetableReporter = TimetableReporter(httpClient, dbUrl)
     private val routeReporter = RouteReporter(httpClient, dbUrl)
-    private val departureReporter = DepartureReporter(httpClient, dbUrl)
 
     fun update(from: LocalDate, to: LocalDate): Boolean {
-        val packets = collectPackets()
-
-        packetReporter.reportAll(packets.map { PacketDTO(it.id, it.from, it.to, it.valid) })
+        val packets = packetCollector.collect(location).map { NewPacket(it.id, it.from, it.to, it.valid) }
         val relevantPackets = packets.filter { it.valid && ((it.from <= from && to <= it.to) || (it.from < from && from < it.to) || (it.from < to && to < it.to)) }
+        packetReporter.reportAll(packets)
+
         relevantPackets.forEach {
             updateData(it)
         }
@@ -38,78 +38,37 @@ class DatasetManager(private val location: Int = 11) {
         return true
     }
 
-    private fun filterValidPacket(packets: List<Packet>, date: LocalDate) =
-        packets.find {
-            it.valid && it.from < date && it.to > date
-        } ?: throw Exception("No packets found for specified date. Validate packet collection procedure!")
+    private fun updateData(packet: NewPacket) {
+        val stops = stopCollector.collect(location, packet.id).map { NewStop(it.id, it.name, it.latitude, it.longitude, it.code) }
+        stopReporter.reportAll(stops)
 
-    private fun collectPackets() = packetCollector.collect(location)
+        val lines = lineCollector.collect(location, packet.id, packet.from).map { NewLine(it.shortCode, it.fullCode, packet.id) }
+        lineReporter.reportAll(lines)
 
-    private fun updateData(packet: Packet) {
-        val date = packet.from
-
-        val lines = lineCollector.collect(location, packet.id, date)
-        val stops = stopCollector.collect(location, packet.id)
-        val timetables = collectAllTimetables(packet.id, lines, date)
-        val routes = collectAllRoutes(packet.id, lines, stops)
-        val departures = collectAllDepartures(timetables, packet.id)
-
-        lineReporter.reportAll(lines.map { LineDTO(it.fullCode, it.shortCode) })
-        stopReporter.reportAll(stops.map { StopDTO(it.id, it.name, it.latitude, it.longitude, it.code.toInt()) })
-        reportAllTimetables(timetables, packet.id)
-        routeReporter.reportAll(routes)
-        departureReporter.reportAll(departures)
-    }
-
-    private fun collectAllTimetables(packetId: Int, lines: List<Line>, date: LocalDate): List<Timetable> {
-        val timetableCollection = mutableListOf<Timetable>()
         lines.forEach {
-            timetableCollection.addAll(
-                timetableCollector.collect(it.fullCode, 0, location, packetId, date)
-                    .map { timetable ->
-                        timetable.apply {
-                            lineFullCode = it.fullCode
-                            direction = 0
-                        }
-                    })
-
-            timetableCollection.addAll(
-                timetableCollector.collect(it.fullCode, 1, location, packetId, date)
-                    .map { timetable ->
-                        timetable.apply {
-                            lineFullCode = it.fullCode
-                            direction = 1
-                        }
-                    })
+            collectFromTimetables(it, packet, stops)
         }
-        return timetableCollection
     }
 
-    private fun collectAllRoutes(packetId: Int, lines: List<Line>, stops: List<Stop>): List<RouteDTO> {
-        val routeCollection = mutableListOf<RouteDTO>()
-        lines.forEach {
-            routeCollection.add(RouteDTO(routeCollector.collect(it.fullCode, 0, location, packetId).map { route -> stops.find { stop -> stop.name == route.name }!!.id }, 0, it.fullCode, packetId ))
-            routeCollection.add(RouteDTO(routeCollector.collect(it.fullCode, 1, location, packetId).map { route -> stops.find { stop -> stop.name == route.name }!!.id }, 1, it.fullCode, packetId))
+    private fun collectFromTimetables(line: NewLine, packet: NewPacket, stops: List<NewStop>): List<Timetable> {
+        val rawRoutes = listOf(
+            routeCollector.collect(line.fullCode, 0, location, packet.id ),
+            routeCollector.collect(line.fullCode, 1, location, packet.id )
+        )
+
+        val rawTimetables = listOf(
+            timetableCollector.collect(line.fullCode, 0, location, packet.id, packet.from),
+            timetableCollector.collect(line.fullCode, 1, location, packet.id, packet.to)
+        )
+
+        val results = mutableListOf<Timetable>()
+        for(i in 0..1) {
+            results.add(scrapeDataFromTimetables(rawRoutes[i], rawTimetables[i], stops))
         }
-        return routeCollection
+        return results
     }
 
-    private fun collectAllDepartures(timetables: List<Timetable>, packetId: Int): List<DepartureDTO> {
-        val departures = mutableListOf<DepartureDTO>()
-        timetables.forEach { timetable ->
-            timetable.connections.forEach {
-                departures.addAll(it.departures.mapIndexed { index, departure -> DepartureDTO(departure, it.number, timetable.direction!!, timetable.lineFullCode!!, packetId, index)})
-            }
-        }
-        return departures
-    }
-
-    private fun reportAllTimetables(timetables: List<Timetable>, packetId: Int) {
-
-        val timetablesToReport = timetables.map { timetable ->
-            val connectionDTOs = timetable.connections.map { ConnectionDTO(it.number, it.notes) }
-            TimetableDTO(packetId, timetable.lineFullCode!!, timetable.weekDays, connectionDTOs, timetable.valid, timetable.direction!!)
-        }
-        timetableReporter.reportAll(timetablesToReport)
+    private fun scrapeDataFromTimetables(routes: List<RawRouteStop>, timetable: RawTimetable, stops: List<NewStop>): Timetable {
+       return TimetableScraper.scrape(timetable.content, routes, stops)
     }
 }

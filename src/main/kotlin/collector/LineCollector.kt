@@ -1,6 +1,6 @@
 package collector
 
-import model.Line
+import model.RawLine
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter
 
 class LineCollector(private val httpClient: OkHttpClient) {
 
-    fun collect(location: Int, packedId: Int, date: LocalDate, ptl: Int = 1): List<Line> {
+    fun collect(location: Int, packedId: Int, date: LocalDate, ptl: Int = 1): List<RawLine> {
 
         val request = createRequest(location, packedId, date, ptl)
         val response = httpClient.newCall(request).execute()
@@ -18,7 +18,7 @@ class LineCollector(private val httpClient: OkHttpClient) {
 
         val dataMatrix = CommonScraper.scrape(raw)
         val lines = dataMatrix.map {
-            Line(it[0].toInt(), it[1].trim())
+            RawLine(it[0].toInt(), it[1].trim())
         }
 
         return lines

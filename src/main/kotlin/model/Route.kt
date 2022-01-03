@@ -3,15 +3,11 @@ package model
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class Route(
-    val name: String
-)
-
-@Serializable
-data class RouteDTO(
-    val stopIds: List<Int>,
+class NewRoute(
+    val id: Int,
+    val length: Int,
     val direction: Int,
-    val lineFullCode: Int,
-    val packetId: Int
+    val stopIds: List<Int>,
+    val servedStopsIds:  List<Int>,
+    val lineFullCode: Int
 )
-

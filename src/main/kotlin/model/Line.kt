@@ -2,13 +2,14 @@ package model
 
 import kotlinx.serialization.Serializable
 
-data class Line(
+@Serializable
+class NewLine(
+    val shortCode: String,
     val fullCode: Int,
-    val shortCode: String
+    val packetId: Int
 )
 
-@Serializable
-data class LineDTO(
+data class RawLine(
     val fullCode: Int,
     val shortCode: String
 )

@@ -1,6 +1,6 @@
 package collector
 
-import model.Route
+import model.RawRouteStop
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -8,7 +8,7 @@ import scraper.CommonScraper
 
 class RouteCollector(private val httpClient: OkHttpClient) {
 
-    fun collect(line: Int, direction: Int, location: Int, packetId: Int): List<Route> {
+    fun collect(line: Int, direction: Int, location: Int, packetId: Int): List<RawRouteStop> {
 
         val request = createRequest(line, direction, location, packetId)
         val response = httpClient.newCall(request).execute()
@@ -17,7 +17,7 @@ class RouteCollector(private val httpClient: OkHttpClient) {
 
         val dataMatrix = CommonScraper.scrape(fixRouteData(raw))
         val routes = dataMatrix.map {
-            Route(it[1])
+            RawRouteStop(it[1])
         }
 
         return routes

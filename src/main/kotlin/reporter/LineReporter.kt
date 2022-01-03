@@ -2,8 +2,7 @@ package reporter
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import model.Line
-import model.LineDTO
+import model.NewLine
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -15,7 +14,7 @@ class LineReporter(
     private val host: String
 ) {
 
-    fun reportAll(lines: List<LineDTO>) {
+    fun reportAll(lines: List<NewLine>) {
 
         lines.forEach {
             val request = createRequest(it)
@@ -26,7 +25,7 @@ class LineReporter(
         }
     }
 
-    private fun createRequest(line: LineDTO): Request {
+    private fun createRequest(line: NewLine): Request {
         val url = host.toHttpUrl().newBuilder()
             .addPathSegment("line")
             .build()

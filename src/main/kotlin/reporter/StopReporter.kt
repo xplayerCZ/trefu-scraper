@@ -2,8 +2,7 @@ package reporter
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import model.Stop
-import model.StopDTO
+import model.NewStop
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -15,7 +14,7 @@ class StopReporter(
     private val host: String
 ) {
 
-    fun reportAll(stops: List<StopDTO>) {
+    fun reportAll(stops: List<NewStop>) {
 
         stops.forEach {
             val request = createRequest(it)
@@ -26,7 +25,7 @@ class StopReporter(
         }
     }
 
-    private fun createRequest(stop: StopDTO): Request {
+    private fun createRequest(stop: NewStop): Request {
         val url = host.toHttpUrl().newBuilder()
             .addPathSegment("stop")
             .build()
