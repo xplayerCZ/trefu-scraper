@@ -1,7 +1,9 @@
 package reporter
 
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import model.CallbackRoute
 import model.NewRoute
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -24,6 +26,17 @@ class RouteReporter(
             println(response.message)
             response.close()
         }
+    }
+
+    fun report(route: NewRoute): CallbackRoute {
+
+        val request = createRequest(route)
+        val response = httpClient.newCall(request).execute()
+
+        println(response.message)
+        if(response.code / 100 > 5) throw Exception("Invalid request!")
+
+        return Json.decodeFromString(response.body!!.string())
     }
 
     private fun createRequest(route: NewRoute): Request {

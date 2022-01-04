@@ -1,11 +1,8 @@
 package collector
 
-import model.RawTimetable
-import model.Timetable
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import scraper.TimetableScraper
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -17,13 +14,12 @@ class TimetableCollector(private val httpClient: OkHttpClient) {
         packedId: Int,
         date: LocalDate,
         daily: Boolean = false,
-    ): RawTimetable {
+    ): String {
 
         val request = createRequest(lineFullCode, direction, location, packedId, date, daily)
         val response = httpClient.newCall(request).execute()
-        val raw = response.body?.string()!!
 
-        return RawTimetable(raw)
+        return response.body?.string()!!
     }
 
     fun createRequest(lineFullCode: Int, direction: Int, location: Int, packedId: Int, date: LocalDate, daily: Boolean): Request {

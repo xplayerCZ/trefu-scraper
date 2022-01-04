@@ -21,6 +21,7 @@ class PacketReporter(
             val response = httpClient.newCall(request).execute()
 
             println(response.message)
+            if(response.code / 100 > 5) throw Exception("Invalid request!")
             response.close()
         }
     }
@@ -35,7 +36,7 @@ class PacketReporter(
 
         return Request.Builder()
             .url(url)
-            .put(requestBody)
+            .post(requestBody)
             .build()
     }
 }

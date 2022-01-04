@@ -4,6 +4,7 @@ import okhttp3.OkHttpClient
 import reporter.*
 import scraper.TimetableScraper
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
 class DatasetManager(private val location: Int = 11) {
@@ -45,8 +46,12 @@ class DatasetManager(private val location: Int = 11) {
         val lines = lineCollector.collect(location, packet.id, packet.from).map { NewLine(it.shortCode, it.fullCode, packet.id) }
         lineReporter.reportAll(lines)
 
-        lines.forEach {
+        val timetables = lines.map {
             collectFromTimetables(it, packet, stops)
+        }.flatten()
+
+        timetables.forEach {
+            connectionReporter.reportAll(it.connections)
         }
     }
 
@@ -63,12 +68,22 @@ class DatasetManager(private val location: Int = 11) {
 
         val results = mutableListOf<Timetable>()
         for(i in 0..1) {
-            results.add(scrapeDataFromTimetables(rawRoutes[i], rawTimetables[i], stops))
+            results.add(scrapeDataFromTimetables(rawRoutes[i], rawTimetables[i], stops, i, line))
         }
         return results
     }
 
-    private fun scrapeDataFromTimetables(routes: List<RawRouteStop>, timetable: RawTimetable, stops: List<NewStop>): Timetable {
-       return TimetableScraper.scrape(timetable.content, routes, stops)
+    private fun scrapeDataFromTimetables(routeStops: List<RawRouteStop>, timetable: String, stops: List<NewStop>, direction: Int, line: NewLine): Timetable {
+        val stopIdsInRoute = routeStops.map { routeStop -> stops.find { stop -> routeStop.name == stop.name }!!.id }
+        val scrapedData = TimetableScraper.scrape(timetable)
+        val enabledStopIds = scrapedData.enabledStopsIndexes.map { stopIdsInRoute[it] }
+
+        val routeId = routeReporter.report(NewRoute(direction, stopIdsInRoute, enabledStopIds, line.fullCode)).id
+
+        val newConnections = scrapedData.connections.map {
+            NewConnection(routeId, it.number, it.departureTimes.map { time -> if(!time.contains('-')) LocalTime.parse(time) else null }, emptyList())
+        }
+
+        return Timetable(newConnections)
     }
 }

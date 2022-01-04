@@ -1,10 +1,10 @@
 package model
 
-data class Timetable(
-    val connections: List<NewConnection> = emptyList(),
-    val routes: List<NewRoute> = emptyList()
+data class RawTimetable(
+    val connections: List<RawConnection>,
+    val enabledStopsIndexes: List<Int>
 )
 
-data class RawTimetable(
-    val content: String
+data class Timetable(
+    val connections: List<NewConnection> = emptyList(),
 )
