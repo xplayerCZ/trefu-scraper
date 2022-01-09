@@ -1,7 +1,10 @@
 package reporter
 
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import model.CallbackPacket
+import model.CallbackStop
 import model.NewPacket
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -15,7 +18,6 @@ class PacketReporter(
 ) {
 
     fun reportAll(packets: List<NewPacket>) {
-
         packets.forEach {
             val request = createRequest(it)
             val response = httpClient.newCall(request).execute()
@@ -37,6 +39,24 @@ class PacketReporter(
         return Request.Builder()
             .url(url)
             .post(requestBody)
+            .build()
+    }
+
+    fun getStored(): List<CallbackPacket> {
+        val request = createStoredRequest()
+        val response = httpClient.newCall(request).execute()
+
+        return Json.decodeFromString(response.body!!.string())
+    }
+
+    private fun createStoredRequest(): Request {
+        val url = host.toHttpUrl().newBuilder()
+            .addPathSegment("packet")
+            .build()
+
+        return Request.Builder()
+            .url(url)
+            .get()
             .build()
     }
 }

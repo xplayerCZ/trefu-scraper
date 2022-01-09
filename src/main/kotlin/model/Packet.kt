@@ -5,6 +5,14 @@ import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
 @Serializable
+class CallbackPacket(
+    val id: Int,
+    val from: @Serializable(with = LocalDateSerializer::class) LocalDate,
+    val to: @Serializable(with = LocalDateSerializer::class) LocalDate,
+    val valid: Boolean
+)
+
+@Serializable
 class NewPacket(
     val id: Int,
     val from: @Serializable(with = LocalDateSerializer::class) LocalDate,

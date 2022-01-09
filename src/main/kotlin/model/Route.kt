@@ -15,5 +15,5 @@ class NewRoute(
     val direction: Int,
     val stopIds: List<Int>,
     val servedStopsIds:  List<Int>,
-    val lineFullCode: Int
+    val lineId: Int
 )
