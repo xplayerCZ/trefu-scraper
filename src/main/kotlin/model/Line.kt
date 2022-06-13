@@ -2,13 +2,10 @@ package model
 
 import kotlinx.serialization.Serializable
 
-@Serializable
-class CallbackLine(
-    val id: Int,
-    val shortCode: String,
+
+data class RawLine(
     val fullCode: Int,
-    val packet: CallbackPacket,
-    val routes: List<CallbackRoute>
+    val shortCode: String
 )
 
 @Serializable
@@ -18,7 +15,10 @@ class NewLine(
     val packetId: Int
 )
 
-data class RawLine(
+@Serializable
+class CallbackLine(
+    val id: Int,
+    val shortCode: String,
     val fullCode: Int,
-    val shortCode: String
+    val packetId: Int,
 )

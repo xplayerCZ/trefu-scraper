@@ -1,39 +1,27 @@
 package collector
 
+import io.ktor.client.call.*
+import io.ktor.client.plugins.resources.*
+import io.ktor.resources.*
+import kotlinx.serialization.Serializable
 import model.RawPacket
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import scraper.CommonScraper
 import java.time.LocalDate
 
-class PacketCollector(private val httpClient: OkHttpClient) {
+@Serializable
+@Resource("ListPacketJSON.php")
+class SourcePackets(val location: Int)
 
-    fun collect(location: Int): List<RawPacket> {
+suspend fun CollectionManager.collect(location: Int): List<RawPacket> {
 
-        val request = createRequest(location)
-        val response = httpClient.newCall(request).execute()
-        val raw = response.body?.string()!!
+    val response = client.get(SourcePackets(location))
 
-        val dataMatrix = CommonScraper.scrape(raw)
-        val packets = dataMatrix.map {
-            val from = LocalDate.of(it[3].toInt(), it[2].toInt(), it[1].toInt())
-            val to = LocalDate.of(it[6].toInt(), it[5].toInt(), it[4].toInt())
-            RawPacket(it[0].toInt(), from, to,it[7] == "1")
-        }
-
-        return packets
+    val dataMatrix = CommonScraper.scrape(response.body())
+    val packets = dataMatrix.map {
+        val from = LocalDate.of(it[3].toInt(), it[2].toInt(), it[1].toInt())
+        val to = LocalDate.of(it[6].toInt(), it[5].toInt(), it[4].toInt())
+        RawPacket(from, to, it[7] == "1", it[0].toInt())
     }
 
-    private fun createRequest(location: Int): Request {
-        val host = "https://www.mhdspoje.cz/jrw50/php/ListPacketJSON.php"
-
-        val url = host.toHttpUrl().newBuilder()
-            .addQueryParameter("location", location.toString())
-            .build()
-
-        return Request.Builder()
-            .url(url)
-            .build()
-    }
+    return packets
 }

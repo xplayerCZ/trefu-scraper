@@ -4,8 +4,11 @@ import kotlinx.serialization.Serializable
 
 
 @Serializable
-class CallbackStop(
-    val id: Int,
+data class RawRouteStop(
+    val name: String
+)
+
+data class RawStop(
     val name: String,
     val latitude: String,
     val longitude: String,
@@ -14,7 +17,6 @@ class CallbackStop(
 
 @Serializable
 class NewStop(
-    val id: Int,
     val name: String,
     val latitude: String,
     val longitude: String,
@@ -22,11 +24,7 @@ class NewStop(
 )
 
 @Serializable
-data class RawRouteStop(
-    val name: String
-)
-
-data class RawStop(
+class CallbackStop(
     val id: Int,
     val name: String,
     val latitude: String,

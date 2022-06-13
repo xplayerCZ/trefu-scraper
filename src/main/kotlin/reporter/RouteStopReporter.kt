@@ -6,25 +6,25 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.resources.*
 import kotlinx.serialization.Serializable
-import model.CallbackRoute
-import model.NewRoute
+import model.RouteStop
 
 @Serializable
-@Resource("routes")
-class Routes
+@Resource("route-stops")
+class RouteStops
 
-suspend fun ReportManager.report(routes: List<NewRoute>): List<CallbackRoute> {
-    return routes.map {
-        client.post(Routes()) {
+suspend fun ReportManager.report(routeStops: List<RouteStop>): List<RouteStop> {
+    return routeStops.map {
+        client.post(RouteStops()) {
             contentType(ContentType.Application.Json)
             setBody(it)
         }.body()
     }
 }
 
-suspend fun ReportManager.report(route: NewRoute): CallbackRoute {
-    return client.post(Routes()) {
+suspend fun ReportManager.report(routeStop: RouteStop): RouteStop {
+    return client.post(RouteStops()) {
         contentType(ContentType.Application.Json)
-        setBody(route)
+        setBody(routeStop)
     }.body()
+
 }

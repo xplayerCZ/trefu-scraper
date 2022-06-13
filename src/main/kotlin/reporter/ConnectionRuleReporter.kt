@@ -6,16 +6,15 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.resources.*
 import kotlinx.serialization.Serializable
-import model.CallbackPacket
-import model.NewPacket
+import model.ConnectionRule
 
 @Serializable
-@Resource("packets")
-class Packets
+@Resource("connection-rules")
+class ConnectionRules
 
-suspend fun ReportManager.report(packets: List<NewPacket>): List<CallbackPacket> {
-    return packets.map {
-        client.post(Packets()) {
+suspend fun ReportManager.report(connRules: List<ConnectionRule>): List<ConnectionRule> {
+    return connRules.map {
+        client.post(ConnectionRules()) {
             contentType(ContentType.Application.Json)
             setBody(it)
         }.body()

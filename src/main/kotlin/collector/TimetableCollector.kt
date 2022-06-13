@@ -1,43 +1,42 @@
 package collector
 
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import io.ktor.client.plugins.resources.*
+import io.ktor.client.statement.*
+import io.ktor.resources.*
+import kotlinx.serialization.Serializable
+import serializer.source.LocalDateSerializer
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
-class TimetableCollector(private val httpClient: OkHttpClient) {
-    fun collect(
-        lineFullCode: Int,
-        direction: Int,
-        location: Int,
-        packedId: Int,
-        date: LocalDate,
-        daily: Boolean = false,
-    ): String {
+@Serializable
+@Resource("loadJRJSON.php")
+class SourceTimetables(
+    val linka: Int,
+    val smer: Int,
+    val location: Int,
+    val packet: Int,
+    val datum: @Serializable(with = LocalDateSerializer::class) LocalDate,
+    val denni: Int
+)
 
-        val request = createRequest(lineFullCode, direction, location, packedId, date, daily)
-        val response = httpClient.newCall(request).execute()
+suspend fun CollectionManager.collect(
+    lineFullCode: Int,
+    direction: Int,
+    location: Int,
+    packetId: Int,
+    date: LocalDate,
+    daily: Boolean = false,
+): String {
 
-        return response.body?.string()!!
-    }
+    val response = client.get(
+        SourceTimetables(
+            linka = lineFullCode,
+            smer = direction,
+            location = location,
+            packet = packetId,
+            datum = date,
+            denni = if (daily) 1 else 0
+        )
+    )
 
-    fun createRequest(lineFullCode: Int, direction: Int, location: Int, packedId: Int, date: LocalDate, daily: Boolean): Request {
-        val host = "https://www.mhdspoje.cz/jrw50/php/5_1/loadJRJSON.php"
-        val formatter = DateTimeFormatter.ofPattern("d_M_yyyy")
-
-        val url = host.toHttpUrl().newBuilder()
-            .addQueryParameter("linka", lineFullCode.toString())
-            .addQueryParameter("smer", direction.toString())
-            .addQueryParameter("location", location.toString())
-            .addQueryParameter("packet", packedId.toString())
-            .addQueryParameter("datum", formatter.format(date))
-            .addQueryParameter("denni", if (daily) "1" else "0")
-
-            .build()
-
-        return Request.Builder()
-            .url(url)
-            .build()
-    }
+    return response.bodyAsText(Charsets.ISO_8859_1)
 }

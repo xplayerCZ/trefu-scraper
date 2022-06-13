@@ -1,38 +1,27 @@
 package collector
 
+import io.ktor.client.call.*
+import io.ktor.client.plugins.resources.*
+import io.ktor.resources.*
+import kotlinx.serialization.Serializable
 import model.RawStop
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import scraper.CommonScraper
 
-class StopCollector(private val httpClient: OkHttpClient) {
+@Serializable
+@Resource("ListStaniceJSON.php")
+class SourceStops(
+    val location: Int,
+    val packet: Int
+)
 
-    fun collect(location: Int, packetId: Int): List<RawStop>  {
+suspend fun CollectionManager.collect(location: Int, packetId: Int): List<RawStop> {
 
-        val request = createRequest(location, packetId)
-        val response = httpClient.newCall(request).execute()
-        val raw = response.body?.string()!!
+    val response = client.get(SourceStops(location, packetId))
 
-        val dataMatrix = CommonScraper.scrape(raw)
-        val stops = dataMatrix.map {
-            RawStop(it[3].toInt(), it[0], it[1], it[2], it[4].toInt())
-        }
-
-        return stops
+    val dataMatrix = CommonScraper.scrape(response.body())
+    val stops = dataMatrix.map {
+        RawStop(it[0], it[1], it[2], it[4].toInt())
     }
 
-    private fun createRequest(location: Int, packetId: Int): Request {
-        val host = "https://www.mhdspoje.cz/jrw50/php/5_1/ListStaniceJSON.php"
-
-        val url = host.toHttpUrl().newBuilder()
-            .addQueryParameter("location", location.toString())
-            .addQueryParameter("packet", packetId.toString())
-            .build()
-
-        return Request.Builder()
-            .url(url)
-            .build()
-    }
-
+    return stops
 }

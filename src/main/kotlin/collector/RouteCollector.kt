@@ -1,45 +1,34 @@
 package collector
 
+import io.ktor.client.call.*
+import io.ktor.client.plugins.resources.*
+import io.ktor.resources.*
+import kotlinx.serialization.Serializable
 import model.RawRouteStop
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import scraper.CommonScraper
 
-class RouteCollector(private val httpClient: OkHttpClient) {
+@Serializable
+@Resource("ListTrasyJSON.php")
+class SourceRoutes(
+    val linka: Int,
+    val smer: Int,
+    val location: Int,
+    val packet: Int
+)
 
-    fun collect(line: Int, direction: Int, location: Int, packetId: Int): List<RawRouteStop> {
+suspend fun CollectionManager.collect(line: Int, direction: Int, location: Int, packetId: Int): List<RawRouteStop> {
 
-        val request = createRequest(line, direction, location, packetId)
-        val response = httpClient.newCall(request).execute()
-        val raw = response.body?.string()!!
+    val response = client.get(SourceRoutes(line, direction, location, packetId))
 
-
-        val dataMatrix = CommonScraper.scrape(fixRouteData(raw))
-        val routes = dataMatrix.map {
-            RawRouteStop(it[1])
-        }
-
-        return routes
+    val dataMatrix = CommonScraper.scrape(fixRouteData(response.body()))
+    val routes = dataMatrix.map {
+        RawRouteStop(it[1])
     }
 
-    private fun createRequest(line: Int, direction: Int, location: Int, packetId: Int): Request {
-        val host = "https://www.mhdspoje.cz/jrw50/php/ListTrasyJSON.php"
+    return routes
+}
 
-        val url = host.toHttpUrl().newBuilder()
-            .addQueryParameter("linka", line.toString())
-            .addQueryParameter("smer", direction.toString())
-            .addQueryParameter("location", location.toString())
-            .addQueryParameter("packet", packetId.toString())
-            .build()
-
-        return Request.Builder()
-            .url(url)
-            .build()
-    }
-
-    //Fix last 0 in received data
-    private fun fixRouteData(rawData: String): String {
-        return rawData.replace(",0", ",\"0\"")
-    }
+//Fix last 0 in received data
+private fun fixRouteData(rawData: String): String {
+    return rawData.replace(",0", ",\"0\"")
 }

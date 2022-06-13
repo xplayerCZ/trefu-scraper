@@ -1,6 +1,7 @@
 package scraper
 
-import model.*
+import model.RawConnection
+import model.RawTimetable
 import org.jsoup.Jsoup
 import java.time.LocalTime
 
@@ -39,10 +40,16 @@ object TimetableScraper {
 
             for (i in connectionNumbers.indices) {
                 val departureTimes = timeMatrix[i]
-                val existing = connections.find { it.number == connectionNumbers[i]}
+                val existing = connections.find { it.number == connectionNumbers[i] }
 
-                when(existing) {
-                    null -> connections.add(RawConnection(connectionNumbers[i], departureTimes.toList(), connectionNotes[i]))
+                when (existing) {
+                    null -> connections.add(
+                        RawConnection(
+                            connectionNumbers[i],
+                            departureTimes.toList().map { if (!it.contains('-')) LocalTime.parse(it) else null },
+                            connectionNotes[i]
+                        )
+                    )
                     else -> existing.notes += ", " + connectionNotes[i]
                 }
             }
