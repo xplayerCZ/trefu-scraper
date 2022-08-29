@@ -6,30 +6,39 @@ import reporter.report
 import scraper.TimetableScraper
 import java.time.LocalDate
 
-class DatasetManager(private val location: Int = 11) {
+class DatasetManager(
+    private val location: Int = 11,
+    private val errors: MutableList<String> = mutableListOf(),
+) {
 
     suspend fun update(from: LocalDate, to: LocalDate) {
-        val packets = CollectionManager.collect(location).map { NewPacket(it.from, it.to, it.valid, it.code) }
-        //val relevantPackets = packets.filter { it.valid && ((it.from <= from && to <= it.to) || (it.from < from && from < it.to) || (it.from < to && to < it.to)) }
+        val packets = CollectionManager.collect(location)
+            .filter { it.valid && (it.from >= from || it.to >= from) }
+            .map { NewPacket(it.from, it.to, it.valid, it.code) }
+            .let { ReportManager.report(it) }
 
-        val createdPackets = ReportManager.report(packets)
-        val relevantPackets = createdPackets.filter { it.valid && (it.from >= from || it.to >= from) }
-
-        relevantPackets.forEach {
+        packets.forEach {
             updateData(it)
+        }
+
+        if (errors.isNotEmpty()) {
+            println("Errors:")
+            errors.forEach { println(it) }
         }
     }
 
     private suspend fun updateData(packet: CallbackPacket) {
-        val stops = CollectionManager.collect(location, packet.code)
+        val stops = CollectionManager
+            .collect(location, packet.code)
             .map { NewStop(it.name, it.latitude, it.longitude, it.code) }
-        val createdStops = ReportManager.report(stops)
+            .let { ReportManager.report(it) }
 
-        val lines = CollectionManager.collect(location, packet.code, packet.from)
+        val lines = CollectionManager
+            .collect(location, packet.code, packet.from)
             .map { NewLine(it.shortCode, it.fullCode, packet.id) }
-        val createdLines = ReportManager.report(lines)
+            .let { ReportManager.report(it) }
 
-        createdLines.forEach { collectFromTimetables(it, packet, createdStops) }
+        lines.forEach { collectFromTimetables(it, packet, stops) }
 
     }
 
@@ -45,7 +54,7 @@ class DatasetManager(private val location: Int = 11) {
         )
 
         for (i in 0..1) {
-            scrapeDataFromTimetables(rawRoutes[i], rawTimetables[i], stops, i, line)
+            scrapeDataFromTimetables(rawRoutes[i], rawTimetables[i], stops, i, line, packet)
         }
     }
 
@@ -54,13 +63,14 @@ class DatasetManager(private val location: Int = 11) {
         timetable: String,
         stops: List<CallbackStop>,
         direction: Int,
-        line: CallbackLine
+        line: CallbackLine,
+        packet: CallbackPacket,
     ) {
         val stopIdsInRoute = routeStops.map { routeStop -> stops.find { stop -> routeStop.name == stop.name }!!.id }
         val scrapedData = TimetableScraper.scrape(timetable)
         val enabledStopIds = scrapedData.enabledStopsIndexes.map { stopIdsInRoute[it] }
 
-        val routeId = ReportManager.report(NewRoute(line.id, stopIdsInRoute.size, direction)).id
+        val routeId = ReportManager.report(NewRoute(line.id, stopIdsInRoute.size)).id
 
         stopIdsInRoute.forEachIndexed { index, stopId ->
             ReportManager.report(RouteStop(stopId, routeId, index, enabledStopIds.contains(stopId)))
@@ -76,22 +86,33 @@ class DatasetManager(private val location: Int = 11) {
             it.departureTimes.forEachIndexed { index, departureTime ->
                 ReportManager.report(NewDeparture(connection.id, departureTime, index))
             }
+
+            it.notes
+                .split(',')
+                .asSequence()
+                .map { note -> note.trim() }
+                .filter { note -> note.isNotEmpty() }
+                .mapNotNull { note -> getRuleIdByNote(note, direction, line.fullCode, packet) }
+                .map { ruleId -> ConnectionRule(connection.id, ruleId) }
+                .distinct()
+                .toList()
+                .let { connRules -> ReportManager.report(connRules) }
         }
-
-        /*
-                        it.departureTimes.map { time -> if(!time.contains('-')) LocalTime.parse(time) else null },
-                it.notes.split(',').map { note -> note.trim() }.filter { note -> note.isNotEmpty() }
-                    .mapNotNull { note -> getRuleIdByNote(note, direction, line.fullCode) }.distinct()
-         */
-
     }
 
-    private fun getRuleIdByNote(note: String, dir: Int, line: Int): Int? =
-        when(note) {
-            "X"-> 1
+    private val unhandledRules = listOf("D", "P", "y", "O", "G", "J")
+
+    private fun getRuleIdByNote(note: String, dir: Int, line: Int, packet: CallbackPacket): Int? {
+        val isSummer = packet.from.month.value in 7..8 && packet.to.month.value in 7..8
+        return when (note) {
+            "X" -> if (!isSummer) 1 else 4
             "25", "+" -> 2
             "6" -> 3
-            "D", "P", "y", "O" -> null
-            else -> throw Exception("$note was found for dir $dir for line $line")
+            in unhandledRules -> null
+            else -> {
+                errors.add("$note was found for dir $dir for line $line, skipping...")
+                null
+            }
         }
+    }
 }

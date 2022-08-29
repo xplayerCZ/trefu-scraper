@@ -10,13 +10,30 @@ import model.ConnectionRule
 
 @Serializable
 @Resource("connection-rules")
-class ConnectionRules
+class ConnectionRules(
+    val connectionId: Int? = null,
+    val ruleId: Int? = null,
+)
+
+suspend fun ReportManager.exists(connRule: ConnectionRule): ConnectionRule? {
+    return client.get(
+        ConnectionRules(
+            connectionId = connRule.connectionId,
+            ruleId = connRule.ruleId
+        )
+    ) {
+        contentType(ContentType.Application.Json)
+    }
+        .body<List<ConnectionRule>>()
+        .firstOrNull()
+}
 
 suspend fun ReportManager.report(connRules: List<ConnectionRule>): List<ConnectionRule> {
-    return connRules.map {
+    return connRules.map { connRule ->
+        exists(connRule)?.let { return@map it }
         client.post(ConnectionRules()) {
             contentType(ContentType.Application.Json)
-            setBody(it)
+            setBody(connRule)
         }.body()
     }
 }
