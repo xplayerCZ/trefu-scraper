@@ -12,7 +12,7 @@ class DatasetManager(
 
     suspend fun update(start: Int) {
         val packets = CollectionManager.collect(location)
-            .filter { it.valid && it.code > start }
+            .filter { it.valid && it.code >= start }
             .map { NewPacket(it.from, it.to, it.valid, it.code) }
             .let { ReportManager.report(it) }
 
