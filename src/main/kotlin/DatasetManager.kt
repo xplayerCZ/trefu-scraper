@@ -4,16 +4,15 @@ import model.*
 import reporter.ReportManager
 import reporter.report
 import scraper.TimetableScraper
-import java.time.LocalDate
 
 class DatasetManager(
-    private val location: Int = 11,
+    private val location: Int,
     private val errors: MutableList<String> = mutableListOf(),
 ) {
 
-    suspend fun update(from: LocalDate, to: LocalDate) {
+    suspend fun update(start: Int) {
         val packets = CollectionManager.collect(location)
-            .filter { it.valid && (it.from >= from || it.to >= from) }
+            .filter { it.valid && it.code > start }
             .map { NewPacket(it.from, it.to, it.valid, it.code) }
             .let { ReportManager.report(it) }
 

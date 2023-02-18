@@ -1,13 +1,6 @@
-FROM ubuntu:latest
-
-RUN apt-get update && apt-get -y install cron
-
-COPY ./build/install/trefu-scraper/ /etc/cron.d/trefu-scraper
-
-RUN chmod 0644 /etc/cron.d/trefu-scraper/bin/trefu-scraper
-
-RUN crontab -l | { cat; echo "* * * * * bash /etc/cron.d/trefu-scraper/bin/trefu-scraper"; } | crontab -
-
-CMD cron
-
-CMD /etc/cron.d/trefu-scraper/bin/trefu-scraper
+FROM openjdk:11-jdk
+RUN mkdir /app
+COPY ./build/install/trefu-scraper/ /app/
+WORKDIR /app/bin
+RUN ["chmod", "+x", "./trefu-scraper"]
+CMD ["./trefu-scraper"]

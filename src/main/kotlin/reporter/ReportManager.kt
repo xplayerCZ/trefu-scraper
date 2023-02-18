@@ -10,7 +10,7 @@ object ReportManager {
     val client = HttpClient(OkHttp) {
         okHttpDefault()
         defaultRequest {
-            host = "0.0.0.0"
+            host = System.getenv("REPORTER_HOST") ?: "localhost"
             port = 8080
             url { protocol = URLProtocol.HTTP }
         }
