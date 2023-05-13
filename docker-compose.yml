@@ -1,0 +1,12 @@
+version: "3.7"
+services:
+  trefu-scraper:
+    build: .
+    environment:
+      START_CODE: 230
+    networks:
+      - origin 
+networks:
+  origin:
+    name: trefu_backend
+    external: true
