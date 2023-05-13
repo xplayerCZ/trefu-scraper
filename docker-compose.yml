@@ -4,6 +4,7 @@ services:
     build: .
     environment:
       START_CODE: 230
+      REPORTER_HOST: trefu-be
     networks:
       - origin 
 networks:
